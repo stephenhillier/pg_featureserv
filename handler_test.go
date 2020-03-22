@@ -133,6 +133,14 @@ func TestCollectionResponse(t *testing.T) {
 	equals(t, tbl.ID, v.Name, "Name")
 	equals(t, tbl.Title, v.Title, "Title")
 	equals(t, tbl.Description, v.Description, "Description")
+
+	equals(t, []float64{
+		tbl.Extent.Minx,
+		tbl.Extent.Miny,
+		tbl.Extent.Maxx,
+		tbl.Extent.Maxy,
+	}, v.Extent.Extent, "Extent")
+
 	// check properties
 	equals(t, len(tbl.Columns), len(v.Properties), "Properties len")
 	for i := 0; i < len(v.Properties); i++ {

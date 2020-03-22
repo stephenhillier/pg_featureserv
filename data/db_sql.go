@@ -30,6 +30,23 @@ const sqlTables = `SELECT
 	postgis_typmod_type(a.atttypmod) AS geometry_type,
 	coalesce(ia.attname, '') AS id_column,
 	(
+		SELECT ARRAY[
+				ST_XMin(geom),
+				ST_YMin(geom),
+				ST_XMax(geom),
+				ST_YMax(geom)
+			]
+		FROM	(
+			SELECT ST_Transform(
+				ST_SetSRID(
+					ST_EstimatedExtent(n.nspname, c.relname, a.attname),
+					postgis_typmod_srid(a.atttypmod)
+				),
+				4326
+			) as geom
+		) ext
+	) as extent,
+	(
 		SELECT array_agg(ARRAY[sa.attname, st.typname, coalesce(da.description,''), sa.attnum::text]::text[] ORDER BY sa.attnum)
 		FROM pg_attribute sa
 		JOIN pg_type st ON sa.atttypid = st.oid

@@ -223,10 +223,11 @@ func scanTable(rows pgx.Rows) *Table {
 		srid                                        int
 		geometryType, idColumn                      string
 		props                                       pgtype.TextArray
+		extent                                      pgtype.Float8Array
 	)
 
 	err := rows.Scan(&id, &schema, &table, &description, &geometryCol,
-		&srid, &geometryType, &idColumn, &props)
+		&srid, &geometryType, &idColumn, &extent, &props)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -265,6 +266,35 @@ func scanTable(rows pgx.Rows) *Table {
 		colDesc[i] = props.Elements[elmPos+2].String
 	}
 
+	// Determine extent for this table
+	var tableExtent Extent
+
+	// Check the length of the extents array.
+	// It should have 4 elements and be of the form [minx, miny, maxx, maxy].
+	extentLen := 0
+	if extent.Status != pgtype.Null {
+		extentLen = int(extent.Dimensions[0].Length)
+	}
+
+	// Check that none of the extents are null.
+	// This can happen if the table is empty or if statistics
+	// on the geometry column are unavailable.
+	// https://postgis.net/docs/ST_EstimatedExtent.html
+	extentOk := true
+
+	for i := int(extent.Dimensions[0].LowerBound - 1); i < extentLen; i++ {
+		if extent.Elements[i].Status == pgtype.Null {
+			extentOk = false
+		}
+	}
+
+	if extentOk && extentLen == 4 {
+		tableExtent.Minx = extent.Elements[0].Float
+		tableExtent.Miny = extent.Elements[1].Float
+		tableExtent.Maxx = extent.Elements[2].Float
+		tableExtent.Maxy = extent.Elements[3].Float
+	}
+
 	// Synthesize a title for now
 	title := id
 	// synthesize a description if none provided
@@ -282,6 +312,7 @@ func scanTable(rows pgx.Rows) *Table {
 		Srid:           srid,
 		GeometryType:   geometryType,
 		IDColumn:       idColumn,
+		Extent:         tableExtent,
 		Columns:        columns,
 		DbTypes:        datatypes,
 		JSONTypes:      jsontypes,
