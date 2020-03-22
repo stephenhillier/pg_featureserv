@@ -2,6 +2,7 @@ package data
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -146,6 +147,8 @@ func sqlColList(names []string, dbtypes map[string]string, addLeadingComma bool)
 
 // makeSQLColExpr casts a column to text if type is unknown to PGX
 func sqlColExpr(name string, dbtype string) string {
+	name = strconv.Quote(name)
+
 	// TODO: make this more data-driven / configurable
 	switch dbtype {
 	case forceTextTSVECTOR:
@@ -202,7 +205,7 @@ func sqlBBoxFilter(tbl *Table, bbox *Extent) string {
 	return sql
 }
 
-const sqlFmtBBoxGeoFilter = " ST_Intersects(%v, ST_MakeEnvelope(%v, %v, %v, %v, 4326)) "
+const sqlFmtBBoxGeoFilter = ` ST_Intersects("%v", ST_MakeEnvelope(%v, %v, %v, %v, 4326)) `
 
 func sqlBBoxGeoFilter(geomCol string, bbox *Extent) string {
 	if bbox == nil {
@@ -213,7 +216,7 @@ func sqlBBoxGeoFilter(geomCol string, bbox *Extent) string {
 	return sql
 }
 
-const sqlFmtGeomCol = "ST_AsGeoJSON( ST_Transform(%v, 4326) %v ) AS _geojson"
+const sqlFmtGeomCol = `ST_AsGeoJSON( ST_Transform("%v", 4326) %v ) AS _geojson`
 
 func sqlGeomCol(geomCol string, param *QueryParam) string {
 	geomExpr := applyTransform(param.TransformFuns, geomCol)
